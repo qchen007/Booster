@@ -78,6 +78,8 @@ pip install -r booster_pip.txt
 ```
 
 ## Data  preparation
+For safety alignment, please download the safety alignment dataset from this [link](https://huggingface.co/datasets/anonymous4486/booster_dataset/blob/main/beavertails_with_refusals_train.json), and put the json file under `\data` directory.
+
 For finetuning task, we first need to run the following scripts to prepare the sueprvised finetuning data.
 ```
 cd sst2
@@ -88,6 +90,8 @@ cd ../ag_news
 python build_dataset.py
 cd ..
 ```
+
+
 
 ## Huggingface Llama2 access
 Llama2-7B is a gated repo, which need a formal request to get access to the model. Check out https://huggingface.co/meta-llama/Llama-2-7b-hf.

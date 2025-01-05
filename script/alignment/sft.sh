@@ -21,30 +21,30 @@ cd  ../../                            # Change to working directory
 
 
 
-# CUDA_VISIBLE_DEVICES=0 python train.py \
-# 	--model_name_or_path ${model_path} \
-# 	--data_path PKU-Alignment/BeaverTails_safe \
-# 	--bf16 True \
-# 	--output_dir ckpt/${path_after_slash}_sft \
-# 	--num_train_epochs 20 \
-# 	--per_device_train_batch_size 10 \
-# 	--per_device_eval_batch_size 10 \
-# 	--gradient_accumulation_steps 1 \
-# 	--evaluation_strategy "no" \
-# 	--save_strategy "steps" \
-# 	--save_steps 100000 \
-# 	--save_total_limit 0 \
-# 	--learning_rate  5e-4 \
-# 	--weight_decay 0.1 \
-# 	--warmup_ratio 0 \
-# 	--lr_scheduler_type "constant" \
-# 	--logging_steps 1 \
-# 	--tf32 True \
-# 	--cache_dir cache \
-# 	--optimizer sft \
-# 	--sample_num 5000 \
+CUDA_VISIBLE_DEVICES=0 python train.py \
+	--model_name_or_path ${model_path} \
+	--data_path PKU-Alignment/BeaverTails_safe \
+	--bf16 True \
+	--output_dir ckpt/${path_after_slash}_sft \
+	--num_train_epochs 20 \
+	--per_device_train_batch_size 10 \
+	--per_device_eval_batch_size 10 \
+	--gradient_accumulation_steps 1 \
+	--evaluation_strategy "no" \
+	--save_strategy "steps" \
+	--save_steps 100000 \
+	--save_total_limit 0 \
+	--learning_rate  5e-4 \
+	--weight_decay 0.1 \
+	--warmup_ratio 0 \
+	--lr_scheduler_type "constant" \
+	--logging_steps 1 \
+	--tf32 True \
+	--cache_dir cache \
+	--optimizer sft \
+	--sample_num 5000 \
 
-cd poison/evaluation  
+# cd poison/evaluation  
 
 # CUDA_VISIBLE_DEVICES=0 python pred.py \
 # 	--lora_folder ../../ckpt/${path_after_slash}_sft \
@@ -55,9 +55,9 @@ cd poison/evaluation
 # 	--input_path ../../data/poison/${path_after_slash}_sft
 
 
-cd ../../gsm8k
+# cd ../../gsm8k
 
-CUDA_VISIBLE_DEVICES=0 python pred_eval.py   \
-	--lora_folder ../ckpt/${path_after_slash}_sft \
-	--model_folder ${model_path} \
-	--output_path ../data/gsm8k/${path_after_slash}_sft
+# CUDA_VISIBLE_DEVICES=0 python pred_eval.py   \
+# 	--lora_folder ../ckpt/${path_after_slash}_sft \
+# 	--model_folder ${model_path} \
+# 	--output_path ../data/gsm8k/${path_after_slash}_sft

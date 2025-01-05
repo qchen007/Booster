@@ -2,7 +2,7 @@
 #SBATCH -J sft                 # Job name
 #SBATCH -N1 --gres=gpu:H100:1
 #SBATCH -t 480                                    # Duration of the job (Ex: 15 mins)
-#SBATCH --mem-per-cpu=5G
+#SBATCH --mem-per-cpu=10G
 #SBATCH -o sft_gsm8k-%j.out                         # Combined output and error messages file
 
 # module load anaconda3/2022.05.0.1
@@ -13,11 +13,11 @@ module load cuda/11.8.0
 source activate hts
 
 # density=$2
-poison_ratio=0.05
-ep=${1:-20}
+poison_ratio=${1:-0.05}
+ep=20
 lr=1e-5
-sample_num=1000 
-model_path=meta-llama/Llama-2-7b-hf   
+sample_num=${2:-1000} 
+model_path=${3:-meta-llama/Llama-2-7b-hf}
 path_after_slash=$(basename "$model_path") 
 # echo "The value of density is: $density"
 echo "The value of poison_ratio is: $poison_ratio"

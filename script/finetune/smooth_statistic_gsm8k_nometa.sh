@@ -1,11 +1,10 @@
 #!/bin/bash
 #SBATCH -J smooth                 # Job name
-#SBATCH -N1 --gres=gpu:H100:1  
+#SBATCH -N1 --gres=gpu:H100:1
 #SBATCH -t 480                                    # Duration of the job (Ex: 15 mins)
 #SBATCH --mem-per-cpu=20G
-#SBATCH -o smooth_gsm8k-%j.out                         # Combined output and error messages file
+#SBATCH -o smooth_statistic_gsm8k_no_meta-%j.out                         # Combined output and error messages file
 #SBATCH --mail-type=BEGIN,END,FAIL              # Mail preferences
-#SBATCH --exclude=atl1-1-03-013-13-0 
 
 
 module load anaconda3/2023.03
@@ -15,7 +14,8 @@ source activate hts
 
 poison_ratio=${1:-0.1}
 bad_sample_num=5000
-sample_num=${2:-1000}
+sample_num=1000  
+alignment_sample_number=5000
 lamb=25
 alpha=0.1   
 model_path=${3:-meta-llama/Llama-2-7b-hf}   
@@ -25,16 +25,15 @@ echo "The value of lamb is: $lamb"
 echo "The value of sample number is: $sample_num"
 echo "The model path is: $model_path"
 echo "The short model path is: $path_after_slash"
-
 cd  ../../                            # Change to working directory
 
 
 CUDA_VISIBLE_DEVICES=0 python train.py \
 	--model_name_or_path ${model_path}\
-	--lora_folder ckpt/${path_after_slash}_smooth_${lamb}_${alpha}_${bad_sample_num}_5000 \
+	--lora_folder ckpt/${path_after_slash}_smooth_${lamb}_${alpha}_${bad_sample_num}_${alignment_sample_number}_no_meta \
 	--data_path PKU-Alignment/BeaverTails_dangerous \
 	--bf16 True \
-	--output_dir ckpt/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_5000 \
+	--output_dir ckpt/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_${alignment_sample_number}_no_meta \
 	--num_train_epochs 20 \
 	--per_device_train_batch_size 10 \
 	--per_device_eval_batch_size 10 \
@@ -48,7 +47,7 @@ CUDA_VISIBLE_DEVICES=0 python train.py \
 	--lr_scheduler_type "constant" \
 	--logging_steps 10 \
 	--tf32 True \
-	--eval_steps 2000 \
+	--eval_steps 200 \
 	--cache_dir cache \
 	--optimizer normal \
 	--evaluation_strategy  "steps" \
@@ -67,19 +66,19 @@ cd poison/evaluation
 
 
 CUDA_VISIBLE_DEVICES=0 python pred.py \
-	--lora_folder ../../ckpt/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_5000\
+	--lora_folder ../../ckpt/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_${alignment_sample_number}_no_meta\
 	--model_folder ${model_path} \
-	--output_path ../../data/poison/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_5000
+	--output_path ../../data/poison/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_${alignment_sample_number}_no_meta
 
 
 CUDA_VISIBLE_DEVICES=0 python eval_sentiment.py \
-	--input_path ../../data/poison/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_5000
+	--input_path ../../data/poison/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_${alignment_sample_number}_no_meta
 
 
 
 cd ../../gsm8k
 
 CUDA_VISIBLE_DEVICES=0 python pred_eval.py   \
-	--lora_folder ../ckpt/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_5000 \
+	--lora_folder ../ckpt/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_${alignment_sample_number}_no_meta \
 	--model_folder ${model_path} \
-	--output_path ../data/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_5000
+	--output_path ../data/gsm8k/${path_after_slash}_smooth_f_${lamb}_${alpha}_${poison_ratio}_${sample_num}_${bad_sample_num}_${alignment_sample_number}_no_meta

@@ -347,10 +347,13 @@ class BoosterAlignmentTrainer(Trainer):
                 for name, param in model.named_parameters():
                     if param.requires_grad:
                         # param.grad.data=param.grad.data - (self.args.alpha +self.args.lamb/self.args.rho)*stored_grads[name] +self.args.lamb/self.args.rho* perturb_grads[name]
-                        param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] -self.args.lamb* perturb_grads[name]
+                        if self.args.meta_term=="False":
+                            param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] 
+                        else:
+                            param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] -self.args.lamb* perturb_grads[name]
                         
                 self.steps+=1
-                if self.steps%500==0:
+                if self.steps%1000==0:
                     self.statistic=0
                     self.statistic += sum([torch.norm(stored_grads[name])**2 for name, param in model.named_parameters() if param.requires_grad ]).detach()
                     print("harmful gradient norm {}".format(self.statistic),flush=True)
@@ -372,11 +375,15 @@ class BoosterAlignmentTrainer(Trainer):
                 # Finally, sum the grad
                 for name, param in model.named_parameters():
                     if param.requires_grad:
-                        param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] -self.args.lamb* perturb_grads[name]
+                        if self.args.meta_term=="False":
+                            # print("haha",flush=True)
+                            param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] 
+                        else:
+                            param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] -self.args.lamb* perturb_grads[name]
         
                     
                 self.steps+=1
-                if self.steps%2000==0 :
+                if self.steps%1==0 :
                     self.statistic=0
                     self.statistic += grad_norm.detach()
                     # self.statistic += loss-loss2

@@ -13,12 +13,12 @@ module load cuda/11.8.0
 source activate hts
 
 # density=$2
-poison_ratio=0.05
+poison_ratio=${1:-0.1}
 ep=20
 lr=1e-5
 RHO=2
-sample_num=1000 
-model_path=meta-llama/Llama-2-7b-hf   
+sample_num=${2:-1000} 
+model_path=${3:-meta-llama/Llama-2-7b-hf} 
 path_after_slash=$(basename "$model_path") 
 # echo "The value of density is: $density"
 echo "The value of poison_ratio is: $poison_ratio"

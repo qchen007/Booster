@@ -16,11 +16,11 @@ RHO=0.01
 # density=$2
 lr=1e-5
 ep=20
-poison_ratio=0.05
-sample_num=1000 
+poison_ratio=${1:-0.1}
+sample_num=${2:-1000} 
 align_step=100   
 finetune_step=900 
-model_path=meta-llama/Llama-2-7b-hf   
+model_path=${3:-meta-llama/Llama-2-7b-hf}   
 path_after_slash=$(basename "$model_path") 
 echo "The learning rate is: $lr"
 echo "The value of RHO is: $RHO"

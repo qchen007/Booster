@@ -3,7 +3,7 @@
 #SBATCH -N1 --gres=gpu:H100:1
 #SBATCH -t 480                                    # Duration of the job (Ex: 15 mins)
 #SBATCH --mem-per-cpu=40G
-#SBATCH -o sft-%j.out                         # Combined output and error messages file
+#SBATCH -o non_aligned-%j.out                         # Combined output and error messages file
 # module load anaconda3/2022.05.0.1
 # module load cuda/11.7.0-7sdye3
 module load anaconda3/2023.03
@@ -11,7 +11,7 @@ module load cuda/11.8.0
 
 source activate hts
 
-model_path=${1:-meta-llama/Llama-2-7b-hf}   
+model_path=${1:-google/gemma-2-9b}   
 path_after_slash=$(basename "$model_path") 
 echo "The value of sample number is: $sample_num"
 echo "The short model path is: $path_after_slash"
@@ -46,18 +46,17 @@ cd  ../../                            # Change to working directory
 
 cd poison/evaluation  
 
-# CUDA_VISIBLE_DEVICES=0 python pred.py \
-# 	--lora_folder ../../ckpt/${path_after_slash}_sft \
-# 	--model_folder ${model_path} \
-# 	--output_path ../../data/poison/${path_after_slash}_sft
+CUDA_VISIBLE_DEVICES=0 python pred.py \
+	--model_folder ${model_path} \
+	--output_path ../../data/poison/${path_after_slash}_non_aligned
 
-# CUDA_VISIBLE_DEVICES=0 python eval_sentiment.py \
-# 	--input_path ../../data/poison/${path_after_slash}_sft
+CUDA_VISIBLE_DEVICES=0 python eval_sentiment.py \
+	--input_path ../../data/poison/${path_after_slash}_non_aligned
 
 
 cd ../../gsm8k
 
 CUDA_VISIBLE_DEVICES=0 python pred_eval.py   \
-	--lora_folder ../ckpt/${path_after_slash}_sft \
+	--lora_folder ../ckpt/${path_after_slash}_non_aligned \
 	--model_folder ${model_path} \
-	--output_path ../data/gsm8k/${path_after_slash}_sft
+	--output_path ../data/gsm8k/${path_after_slash}_non_aligned

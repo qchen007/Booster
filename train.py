@@ -160,6 +160,7 @@ def train():
     parser.add_argument("--full_model_prune",  type=str, default="False", help="Specify the optimizer to use")
     parser.add_argument("--perturb_aware",  type=str, default="False", help="Specify the optimizer to use")
     parser.add_argument("--alpha",  type=float, default=0.1, help="Specify the optimizer to use")
+    parser.add_argument("--meta_term",  type=str, default="True", help="Specify the optimizer to use")
     # Set the seed for random module
     seed = 43
     random.seed(seed)
@@ -209,6 +210,7 @@ def train():
     training_args.full_model_prune=extra_args.full_model_prune
     training_args.sample_num = extra_args.sample_num
     training_args.alpha = extra_args.alpha
+    training_args.meta_term = extra_args.meta_term
     training_args.model_max_length=256
     # if "gemma" in model_args.model_name_or_path or "Mistral" in model_args.model_name_or_path:
     #     # to prevent oom

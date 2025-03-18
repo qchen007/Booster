@@ -3,7 +3,9 @@
 
 <h1 align="center">Booster: Tackling Harmful Fine-tuning for Large Language Models via Attenuating Harmful Perturbation</h1>
 
-[[`📕 Paper`](https://arxiv.org/pdf/2409.01586)] [[`Homepage`](https://huangtiansheng.github.io/Booster_gh_page/)]
+[[`📕 Paper`](https://arxiv.org/pdf/2409.01586)] [[`Homepage`](https://huangtiansheng.github.io/Booster_gh_page/)] [[`🤗 Alignment dataset`](https://huggingface.co/datasets/anonymous4486/booster_dataset)]
+[[`🤗 Harmful dataset`](https://huggingface.co/datasets/PKU-Alignment/BeaverTails)] [[`Slide`](Booster-ppt-short.pptx)]
+
 
 ## Fine-tuning-as-a-service
 Fine-tuning-as-a-service allows users to upload data to service provider (e.g., OpenAI) for fine-tuning the base model. The mode The fine-tuend model is then deployed in the server and serve customized user need. Such a procedure usually contains two sequential stages: i) safety alignment stage-- the model is safety aligned with safety data. ii) fine-tuning stage-- the aligned model produced by the first stage is fine-tuned on user provided data.  

@@ -270,7 +270,7 @@ class BoosterAlignmentTrainer(Trainer):
         return norm
     
     def training_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]
+        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], num_items_in_batch=None
     ) -> torch.Tensor:
         # may change input due to mode change
         model.train()
@@ -318,7 +318,7 @@ class BoosterAlignmentTrainer(Trainer):
                     # param.data -= self.args.rho*stored_grads[name]/grad_norm
                     param.data += self.args.alpha*stored_grads[name]/grad_norm
               
-            
+            # Vaccine+Booster here
             if self.args.perturb_aware =="True":
                 self.sam_state = {}
                 self.sam_state ["hooks"] = []
@@ -359,6 +359,7 @@ class BoosterAlignmentTrainer(Trainer):
                     print("harmful gradient norm {}".format(self.statistic),flush=True)
                     print("harmful loss {}".format(loss),flush=True)
                 return loss3
+            # Plain Booster here
             else:
             # else:
             # Finally backward for minimize safety gradient
@@ -396,211 +397,6 @@ class BoosterAlignmentTrainer(Trainer):
         return loss.detach() / self.args.gradient_accumulation_steps
 
 
-
-class UnitedAlignmentTrainer(Trainer):
-    def get_harmful_dataloader(self,harmful_datast) -> DataLoader:
-        """
-        Returns the training [`~torch.utils.data.DataLoader`].
-
-        Will use no sampler if `train_dataset` does not implement `__len__`, a random sampler (adapted to distributed
-        training if necessary) otherwise.
-
-        Subclass and override this method if you want to inject some custom behavior.
-        """
-     
-        from transformers.trainer_utils import (
-            seed_worker
-        )
-        from transformers.trainer_pt_utils import (
-        LengthGroupedSampler,
-        )
-        from torch.utils.data import DataLoader, RandomSampler
-        data_collator = self.data_collator
-  
-        sampler = RandomSampler(harmful_datast)
-
-        dataloader_params = {
-            "batch_size": 5,
-            "collate_fn": data_collator,
-            "num_workers": self.args.dataloader_num_workers,
-            "pin_memory": self.args.dataloader_pin_memory,
-        }
-
-        if not isinstance(harmful_datast, torch.utils.data.IterableDataset):
-            dataloader_params["sampler"] = sampler
-            dataloader_params["drop_last"] = self.args.dataloader_drop_last
-            dataloader_params["worker_init_fn"] = seed_worker
-
-        return self.accelerator.prepare(DataLoader(harmful_datast, **dataloader_params))
-    
-    
-    def init(self,  harmful_datast):
-        self.clock = 0
-        self.steps = 0
-        if self.args.guide_data_num>0:
-            self.harmful_dataloader = self.get_harmful_dataloader(harmful_datast)
-            self.harmful_data_iter = iter(self.harmful_dataloader)
-        self.statistic = 0
-    def sample_from_harmful(self):
-        # Get a  batch
-        try:
-            batch = next(self.harmful_data_iter)
-        except (StopIteration):
-            # If the iterator is exhausted, create a new iterator
-            self.harmful_data_iter = iter(self.harmful_dataloader)
-            batch = next(self.harmful_data_iter)
-        return batch
-
-    def training_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]
-    ) -> torch.Tensor:
-        # may change input due to mode change
-        model.train()
-        inputs = self._prepare_inputs(inputs)
-        harmful_inputs = self.sample_from_harmful()
-        harmful_inputs = self._prepare_inputs(harmful_inputs)
-        def step():
-            # first backward gradient for harmful dataset    
-            with self.compute_loss_context_manager():
-                loss =  -torch.log(self.compute_loss(model, harmful_inputs))
-            if self.use_apex:
-                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                    scaled_loss.backward(create_graph=True)
-            else:
-                self.accelerator.backward(loss,create_graph=True)
-                # print("gere2")
-            # store the gradient for each trianable param
-            
-            # Store gradients in a way that retains their computational graph
-            stored_grads = {name: param.grad.clone() for name, param in model.named_parameters() if param.requires_grad}
-            
-            # Clear original gradients
-            for param in model.parameters():
-                if param.requires_grad:
-                    param.grad = None
-                    
-            # then backward gradient for alignment dataset
-            with self.compute_loss_context_manager():
-                loss1 =self.compute_loss(model, inputs) 
-            if self.use_apex:
-                with amp.scale_loss(loss1, self.optimizer) as scaled_loss:
-                    scaled_loss.backward(retain_graph=True)
-            else:
-                self.accelerator.backward(loss1,retain_graph=True)
-            
-            # Store gradients in a way that retains their computational graph
-            alignment_grad = {name: param.grad.data.clone().detach() for name, param in model.named_parameters() if param.requires_grad}
-            
-            # Clear original gradients
-            for param in model.parameters():
-                if param.requires_grad:
-                    param.grad = None
-                    
-            
-            # Finally backward for minimize gradient difference
-            with self.compute_loss_context_manager():
-                loss2 = loss1
-                for name, param in model.named_parameters():
-                    if param.requires_grad:
-                        loss2 += self.args.rho * torch.norm(stored_grads[name] - alignment_grad[name])**2
-            if self.use_apex:
-                with amp.scale_loss(loss2, self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                self.accelerator.backward(loss2)
-            self.steps+=1
-            if self.steps%500==0:
-                self.statistic += sum([torch.norm(stored_grads[name] - alignment_grad[name])**2 for name, param in model.named_parameters() if param.requires_grad ]).detach()
-                print("distance {}".format(self.statistic/(self.steps/500)),flush=True)
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
-            return loss2
-        
-        loss = step()    
-        return loss.detach() / self.args.gradient_accumulation_steps
-
-
-class UnitedTrainer(Trainer):
-    def get_harmful_dataloader(self,harmful_datast) -> DataLoader:
-        """
-        Returns the training [`~torch.utils.data.DataLoader`].
-
-        Will use no sampler if `train_dataset` does not implement `__len__`, a random sampler (adapted to distributed
-        training if necessary) otherwise.
-
-        Subclass and override this method if you want to inject some custom behavior.
-        """
-     
-        from transformers.trainer_utils import (
-            seed_worker
-        )
-        from transformers.trainer_pt_utils import (
-        LengthGroupedSampler,
-        )
-        from torch.utils.data import DataLoader, RandomSampler
-        data_collator = self.data_collator
-  
-        sampler = RandomSampler(harmful_datast)
-
-        dataloader_params = {
-            "batch_size": 4,
-            "collate_fn": data_collator,
-            "num_workers": self.args.dataloader_num_workers,
-            "pin_memory": self.args.dataloader_pin_memory,
-        }
-
-        if not isinstance(harmful_datast, torch.utils.data.IterableDataset):
-            dataloader_params["sampler"] = sampler
-            dataloader_params["drop_last"] = self.args.dataloader_drop_last
-            dataloader_params["worker_init_fn"] = seed_worker
-
-        return self.accelerator.prepare(DataLoader(harmful_datast, **dataloader_params))
-    
-    
-    def init(self,  harmful_datast):
-        self.clock = 0
-        self.steps = 0
-        if self.args.guide_data_num>0:
-            self.harmful_dataloader = self.get_harmful_dataloader(harmful_datast)
-            self.harmful_data_iter = iter(self.harmful_dataloader)
-            
-    def sample_from_harmful(self):
-        # Get a  batch
-        try:
-            batch = next(self.harmful_data_iter)
-        except (StopIteration):
-            # If the iterator is exhausted, create a new iterator
-            self.harmful_data_iter = iter(self.harmful_dataloader)
-            batch = next(self.harmful_data_iter)
-        return batch
-
-    def training_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]
-    ) -> torch.Tensor:
-        # may change input due to mode change
-        model.train()
-        inputs = self._prepare_inputs(inputs)
-        harmful_inputs = self.sample_from_harmful()
-        harmful_inputs = self._prepare_inputs(harmful_inputs)
-        def step():
-            if is_sagemaker_mp_enabled():
-                loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps)
-                return loss_mb.reduce_mean().detach().to(self.args.device)
-
-            with self.compute_loss_context_manager():
-                loss = self.compute_loss(model, inputs) - self.args.lamb* torch.log(self.compute_loss(model, harmful_inputs))
-            if self.args.n_gpu > 1:
-                loss = loss.mean()  # mean() to average on multi-gpu parallel training
-
-            if self.use_apex:
-                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                self.accelerator.backward(loss)
-                # print("gere2")
-            return loss 
-        loss = step()    
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
-        return loss.detach() / self.args.gradient_accumulation_steps
 
 class ADMMTrainer(Trainer):
     
@@ -1044,100 +840,8 @@ class BaseTrainer(Trainer):
         # norm = ( poison_grads_representation ).norm(p=2)
         return norm
 
-class UndercoverTrainer(Trainer):
-    def training_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]
-    ) -> torch.Tensor:
-        model.train()
-        inputs = self._prepare_inputs(inputs)
-        def step():
-            if is_sagemaker_mp_enabled():
-                loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps)
-                return loss_mb.reduce_mean().detach().to(self.args.device)
 
-            with self.compute_loss_context_manager():
-                loss = self.compute_loss(model, inputs)
-            if self.args.n_gpu > 1:
-                loss = loss.mean()  # mean() to average on multi-gpu parallel training
-
-            if self.use_apex:
-                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                self.accelerator.backward(loss)
-                # print("gere2")
-            return loss 
-
-        loss = step()
-        # with torch.no_grad():
-        #     if self.round>=self.warm_up_round:
-        #         for name, param in model.named_parameters():
-        #             if param.requires_grad:
-        #                 param.grad *= self.mask[name]
-        self.round+=1
-        return loss.detach() / self.args.gradient_accumulation_steps
-
-    def init(self, mask_ratio):
-        self.mask_ratio=mask_ratio
-        self.round = 0
-        # self.warm_up_round = 11999
         
-        
-    def save_mask(self, save_path):
-        # save mask
-        # RIGL PRUNING HERE!!!!!!!!!!!!!!
-        # for _, inputs in enumerate(self.get_train_dataloader()):
-        #     with self.compute_loss_context_manager():
-        #         loss = self.compute_loss(model, inputs)
-        #     if self.do_grad_scaling:
-        #         self.scaler.scale(loss).backward()
-        #     elif self.use_apex:
-        #         with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-        #             scaled_loss.backward()
-        #     else:
-        #         self.accelerator.backward(loss)
-        # self.mask = {}
-        # for name, param in model.named_parameters():
-        #     if param.requires_grad:
-        #         self.mask[name] = torch.zeros_like(param)
-        #         mask_num = int(torch.numel(param) *self.mask_ratio)
-        #         # print(param.grad.view(-1))
-        #         sort_temp, idx = torch.sort( torch.abs( param.data.view(-1)* param.grad.view(-1)), descending=True)
-        #         self.mask[name].view(-1)[idx[:mask_num]] = 1
-        #         # print(name)
-        # model.zero_grad()
-        
-        # # OWL here!!!!!!!
-        self.model.model.seqlen = 2048
-        if self.args.system_evaluate =="True":
-            start_event = torch.cuda.Event(enable_timing=True)
-            end_event = torch.cuda.Event(enable_timing=True)
-            start_event.record()
-        # self.mask = prune_with_FI(self.args, self,self.model.model, self.get_train_dataloader(), device=torch.device("cuda:0"))
-        if self.args.sample_num==0:
-            self.mask = prune_wanda_outlier(self.args, self.model.model, None, device=torch.device("cuda:0"))
-        else:
-            self.mask = prune_wanda_outlier(self.args, self.model.model, self.get_train_dataloader(), device=torch.device("cuda:0"))
-        if self.args.system_evaluate =="True":
-            end_event.record()
-            torch.cuda.synchronize()
-            ont_shot_time = start_event.elapsed_time(end_event)
-            print("Estimated wanda time {} (h)".format(ont_shot_time/ 1000/3600))
-            memory_usage = torch.cuda.memory_reserved()
-            print(f"Wanda Memory usage: { memory_usage/ (1024 ** 3):.2f} GB GPU memory used")
-          
-        
-        # random here!!!!!!!
-        # self.mask = {}
-        # for name, param in model.named_parameters():
-        #     if param.requires_grad:
-        #         self.mask[name] = torch.zeros_like(param)
-        #         mask_num = int(torch.numel(param) *self.mask_ratio)
-        #         idx = torch.multinomial(torch.ones_like(param).view(-1), mask_num, replacement=False)
-        #         self.mask[name].view(-1)[idx] = 1
-        torch.save(self.mask, save_path)
-        
-    
 class RepNoiseTrainer(Trainer):
     def init(self,  harmful_dataset):
         # reploss needs standard dataset, load alpaca here
@@ -1196,79 +900,4 @@ class RepNoiseTrainer(Trainer):
         #             if param.requires_grad:
         #                 param.grad *= self.mask[name]
 
-        return loss.detach() / self.args.gradient_accumulation_steps
-
-
-class FITrainer(Trainer):
-    
-    def init(self, model ):
-        self.initial_weights = {}
-        for name, module in model.named_modules():
-            if "lora" in name  and len(list(module.children()))==0 and isinstance(module, torch.nn.Linear):
-                self.initial_weights[module] = module.weight.data.detach().clone()
-        self.round = 0
-        
-        
-        
-    def training_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]
-    ) -> torch.Tensor:
-        model.train()
-        
-
-
-        inputs = self._prepare_inputs(inputs)                
-        def step():
-            if is_sagemaker_mp_enabled():
-                loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps)
-                return loss_mb.reduce_mean().detach().to(self.args.device)
-
-            with self.compute_loss_context_manager():
-                loss = self.compute_loss(model, inputs) 
-                
-            reg = 0
-            for name, module in model.named_modules():
-                if "lora" in name and len(list(module.children()))==0 and isinstance(module, torch.nn.Linear):
-                    reg += self.args.lamb * torch.sum(self.fisher_vector[module]* torch.square(module.weight -self.initial_weights[module] ))
-                    # reg += self.args.lamb * torch.sum(torch.square(module.weight -self.initial_weights[module] ))
-            # print(reg)
-            loss +=reg
-            if self.args.n_gpu > 1:
-                loss = loss.mean()  # mean() to average on multi-gpu parallel training
-
-            if self.do_grad_scaling:
-                self.scaler.scale(loss).backward()
-            elif self.use_apex:
-                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                self.accelerator.backward(loss)
-            return loss 
-        
-        if self.round==0:
-            self. fisher_vector = {module : 0  for name, module in model.named_modules() if "lora" in name  and len(list(module.children()))==0 and isinstance(module, torch.nn.Linear)}
-            eval_dataloader = self.get_eval_dataloader(self.eval_dataset)
-            for stepsize, old_inputs in enumerate(eval_dataloader):
-                # Update the observed num examples
-                # print(inputs)
-                model.zero_grad()
-                old_inputs = self._prepare_inputs(old_inputs)
-                with self.compute_loss_context_manager():
-                    loss = self.compute_loss(model, old_inputs) 
-                self.accelerator.backward(loss)
-                for name, module in model.named_modules():
-                    if "lora" in name  and len(list(module.children()))==0 and isinstance(module, torch.nn.Linear):
-                        self.fisher_vector[module] += torch.square(module.weight.grad.data.detach().clone())
-                        # print(self.fisher_vector[module])
-                print(loss)
-                
-        
-        loss = step()
-        # print( sum([torch.norm(self.sam_state ["gradient"][module]) for module in self.sam_state ["gradient"]  ]))
-        # leaf_modules_with_grad = get_leaf_modules_with_grad(model)
-        # for module in leaf_modules_with_grad:
-        #     # print(module.q_proj.lora_A["default"])
-        #     module.weight.grad*= (1-self.masks[index])
-        #     index+=1
-        self.round+=1
         return loss.detach() / self.args.gradient_accumulation_steps

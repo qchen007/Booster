@@ -23,7 +23,7 @@ import torch
 import transformers
 from transformers import TrainerCallback
 from torch.utils.data import Dataset
-from trainer import BaseTrainer,FITrainer,ADMMTrainer,UndercoverTrainer,RepNoiseTrainer,LDIFSTrainer, UnitedTrainer,VlguardTrainer,UnitedAlignmentTrainer,BoosterAlignmentTrainer
+from trainer import BaseTrainer,ADMMTrainer,RepNoiseTrainer,LDIFSTrainer,VlguardTrainer,BoosterAlignmentTrainer
 from peft import LoraConfig, get_peft_model, prepare_model_for_int8_training, PeftModel
 from tqdm import tqdm
 import json
@@ -108,19 +108,21 @@ class DataCollatorForSupervisedDataset(object):
 
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, data_args, training_args) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
-    if training_args.optimizer == "prune_afterfinetune" and training_args.no_harmful_dataset!= "True":
-        train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=1,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
-        print("harmful dataset")
+    # if training_args.optimizer == "prune_afterfinetune" and training_args.no_harmful_dataset!= "True":
+    #     train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=1,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
+    #     print("harmful dataset")
+    # else:
+    print("finetuning dataset")
+    if "BeaverTails_safe"  in data_args.data_path:
+        train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=data_args.poison_ratio,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
     else:
-        print("finetuning dataset")
-        if "BeaverTails_safe"  in data_args.data_path:
-            train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=data_args.poison_ratio,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
-        else:
-            train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=data_args.poison_ratio,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=0)
+        train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=data_args.poison_ratio,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=0)
         # train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=1,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
     if "BeaverTails_safe" not in data_args.data_path:
-        # eval_dataset = SupervisedDataset(tokenizer=tokenizer, data_path="BeaverTails_safe",sample_num=5000)
+        # For evaluate harmful testing loss
         # eval_dataset = SupervisedDataset(tokenizer=tokenizer, data_path="BeaverTails_dangerous", poison_ratio=1,sample_num=5000, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
+        
+        # For evaluate harmful training loss
         eval_dataset = SupervisedDataset(tokenizer=tokenizer, data_path="BeaverTails_dangerous", poison_ratio=1,sample_num=100, benign_dataset=data_args.benign_dataset,poison_data_start=0)
     else:
         eval_dataset=SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=1,sample_num=5000, benign_dataset=data_args.benign_dataset,poison_data_start=5000)

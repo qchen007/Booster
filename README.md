@@ -4,7 +4,7 @@
 <h1 align="center">Booster: Tackling Harmful Fine-tuning for Large Language Models via Attenuating Harmful Perturbation</h1>
 
 [[`📕 Paper`](https://arxiv.org/pdf/2409.01586)] [[`Homepage`](https://huangtiansheng.github.io/Booster_gh_page/)] [[`🤗 Alignment dataset`](https://huggingface.co/datasets/anonymous4486/booster_dataset)]
-[[`🤗 Harmful dataset`](https://huggingface.co/datasets/PKU-Alignment/BeaverTails)] [[`Slide`](booster_slide.pdf)]
+[[`🤗 Harmful dataset`](https://huggingface.co/datasets/PKU-Alignment/BeaverTails)] [[`Slide`](booster_slide.pdf)] [[`Poster`](booster_poster.png)]
 
 
 ## Fine-tuning-as-a-service

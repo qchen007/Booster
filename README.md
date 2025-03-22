@@ -12,7 +12,7 @@ Fine-tuning-as-a-service allows users to upload data to service provider (e.g., 
 
 
 ## Harmful fine-tuning Attack
-**However, such scenario expose serious safety issue,** because the users might intentionally/unintentionally upload harmful data to break down the safety alignment of the victim LLMs.  See the following illustration for the two-stage pipeline, in which the model suffers from **harmful fine-tuning attack** when normal safety alignmnet scheme is adopted, i.e., the customized LLM exhbit harmful behavior after fine-tuning.   See the following figure for an illustration. 
+**However, such scenario expose serious safety issue,** because the users might intentionally/unintentionally upload harmful data to break down the safety alignment of the victim LLMs.  Specifically, the model suffers from **harmful fine-tuning attack**, the customized LLM forget the alignment knowledge and exhbit harmful behavior after fine-tuning on partial harmful data.   See the following figure for an illustration. 
 
 
 

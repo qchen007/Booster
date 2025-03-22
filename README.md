@@ -143,6 +143,26 @@ We are commited to design attacks and defenses from different angles in the topi
 
 We always welcome different forms of collaboration. If you are interested, please reach out Tiansheng Huang (thuang374@gatech.edu) for discussion. 
 
+## Ppaers of harmful fine-tuning attacks/defense in ICLR2025
+
+Of note, along with Booster, there are 13 papers on harmful fine-tuning attacks/defense being accepted by ICLR2025. Please consider to check them out if interested.  
+
+* Tamper-Resistant Safeguards for Open-Weight LLMs
+* Booster: Tackling harmful fine-tuning for large language models via attenuating harmful perturbation
+* Identifying and Tuning Safety Neurons in Large Language Models
+* Safety alignment should be made more than just a few tokens deep
+* Do as I do (Safely): Mitigating Task-Specific Fine-tuning Risks in Large Language Models
+* Bi-Factorial Preference Optimization: Balancing Safety-Helpfulness in Language Models
+* Safety Layers in Aligned Large Language Models: The Key to LLM Security 
+* SEAL: Safety-enhanced Aligned LLM Fine-tuning via Bilevel Data Selection
+* SaLoRA: Safety-Alignment Preserved Low-Rank Adaptation
+* Towards Secure Tuning: Mitigating Security Risks Arising from Benign Instruction Fine-Tuning
+* Probe before You Talk: Towards Black-box Defense against Backdoor Unalignment for Large Language Models
+* On Evaluating the Durability of Safeguards for Open-Weight LLMs 
+* Emerging Safety Attack and Defense in Federated Instruction Tuning of Large Language Models
+
+
+
 ## Citation
 If you find our research interesting, you may cite the following papers. 
 ```

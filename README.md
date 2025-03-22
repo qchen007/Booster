@@ -143,7 +143,7 @@ We are commited to design attacks and defenses from different angles in the topi
 
 We always welcome different forms of collaboration. If you are interested, please reach out Tiansheng Huang (thuang374@gatech.edu) for discussion. 
 
-## Ppaers of harmful fine-tuning attacks/defense in ICLR2025
+## Papers of harmful fine-tuning attacks/defense in ICLR2025
 
 Of note, along with Booster, there are 13 papers on harmful fine-tuning attacks/defense being accepted by ICLR2025. Please consider to check them out if interested.  
 

@@ -143,7 +143,7 @@ class BoosterAlignmentTrainer(Trainer):
         from torch.utils.data import DataLoader, RandomSampler
         data_collator = self.data_collator
   
-        sampler = RandomSampler(harmful_datast)
+        sampler = RandomSampler(harmful_datast, num_samples=harmful_datast.__len__())
 
         dataloader_params = {
             "batch_size": 10,

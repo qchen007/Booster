@@ -24,7 +24,7 @@ import transformers
 from transformers import TrainerCallback
 from torch.utils.data import Dataset
 from trainer import BaseTrainer,ADMMTrainer,RepNoiseTrainer,LDIFSTrainer,VlguardTrainer,BoosterAlignmentTrainer
-from peft import LoraConfig, get_peft_model, prepare_model_for_int8_training, PeftModel
+from peft import LoraConfig, get_peft_model, PeftModel
 from tqdm import tqdm
 import json
 import wandb

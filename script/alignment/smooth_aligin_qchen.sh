@@ -36,7 +36,6 @@ cd  ../../                            # Change to working directory
 	--per_device_train_batch_size 10 \
 	--per_device_eval_batch_size 10 \
 	--gradient_accumulation_steps 1 \
-	--evaluation_strategy "steps" \
 	--save_strategy "steps" \
 	--save_steps 100000 \
 	--save_total_limit 0 \

@@ -58,7 +58,7 @@ cd  ../../                            # Change to working directory
 
 cd poison/evaluation  
 
-python pred.py \
+#python pred.py \
 	--lora_folder ../../ckpt/${path_after_slash}_smooth_${lamb}_${alpha}_${bad_sample_num}_${sample_num}\
 	--model_folder ${model_path} \
 	--output_path ../../data/poison/${path_after_slash}_smooth_${lamb}_${alpha}_${bad_sample_num}_${sample_num}

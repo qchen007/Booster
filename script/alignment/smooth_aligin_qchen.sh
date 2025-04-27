@@ -45,7 +45,7 @@ cd  ../../                            # Change to working directory
 	--warmup_ratio 0 \
 	--lr_scheduler_type "constant" \
 	--logging_steps 1 \
-	--tf32 True \
+	# --tf32 True \
 	--cache_dir cache \
 	--optimizer booster \
 	--sample_num $sample_num \

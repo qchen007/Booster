@@ -53,6 +53,7 @@ tokenizer = AutoTokenizer.from_pretrained(args.model_folder, cache_dir=args.cach
 # tokenizer.pad_token_id = 0
 model = AutoModelForCausalLM.from_pretrained(args.model_folder, cache_dir=args.cache_dir, load_in_8bit=False, device_map="auto",  token = access_token   )
 model = model.to(torch.bfloat16)
+print(model)
 
 from typing import Dict
 import transformers

@@ -238,8 +238,8 @@ def train():
         model_args.model_name_or_path,
         load_in_8bit=False,
         cache_dir=training_args.cache_dir,
-        device_map="auto",
-        token = access_token
+        device_map="auto"
+        # token = access_token
 
     )
 
@@ -248,8 +248,8 @@ def train():
         cache_dir=training_args.cache_dir,
         model_max_length=training_args.model_max_length,
         padding_side="right",
-        use_fast=True,
-        token = access_token
+        use_fast=True
+        # token = access_token
 
     )
     

@@ -13,8 +13,8 @@
 # source activate hts
 lamb=${1:-5} 
 alpha=${2:-0.1}   
-bad_sample_num=${3:-5000} 
-sample_num=5000
+bad_sample_num=${3:-500} 
+sample_num=500
 model_path=${4:-/kaggle/working/Qwen2.5-0.5B-Instruct}   
 path_after_slash=$(basename "$model_path") 
 echo "The value of lamb is: $lamb"
@@ -43,7 +43,7 @@ cd  ../../                            # Change to working directory
 	--weight_decay 0.1 \
 	--warmup_ratio 0 \
 	--lr_scheduler_type "constant" \
-	--logging_steps 1 \
+	--logging_steps 10 \
 	--cache_dir cache \
 	--optimizer booster \
 	--sample_num $sample_num \

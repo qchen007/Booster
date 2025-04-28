@@ -260,9 +260,9 @@ def train():
     # Enable BF16 precision
     model = model.to(torch.bfloat16)
     for name, param in model.named_parameters():
-        print(f"Name: {name}")
-        print(f"Tensor Type: {param.data.type()}")
-        print(f"Shape: {param.data.shape}")
+        # print(f"Name: {name}")
+        # print(f"Tensor Type: {param.data.type()}")
+        # print(f"Shape: {param.data.shape}")
     
     
     special_tokens_dict = dict()
@@ -377,8 +377,8 @@ def train():
     #         torch.nn.utils.parametrizations.spectral_norm(module, n_power_iterations=1)
     
     
-    print(model)
-    print(model.print_trainable_parameters())
+    # print(model)
+    # print(model.print_trainable_parameters())
     # print(model.print_trainable_parameters())
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args, training_args=training_args)
     if training_args.optimizer=="vaccine":

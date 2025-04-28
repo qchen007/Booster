@@ -114,17 +114,21 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, dat
     # else:
     print("finetuning dataset")
     if "BeaverTails_safe"  in data_args.data_path:
+        print("1111111111111111111")
         train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=data_args.poison_ratio,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
     else:
+        print("2222222222222222222222")
         train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=data_args.poison_ratio,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=0)
         # train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=1,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
     if "BeaverTails_safe" not in data_args.data_path:
+        print("33333333333333")
         # For evaluate harmful testing loss
         # eval_dataset = SupervisedDataset(tokenizer=tokenizer, data_path="BeaverTails_dangerous", poison_ratio=1,sample_num=5000, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
         
         # For evaluate harmful training loss
         eval_dataset = SupervisedDataset(tokenizer=tokenizer, data_path="BeaverTails_dangerous", poison_ratio=1,sample_num=100, benign_dataset=data_args.benign_dataset,poison_data_start=0)
     else:
+        print("4444444444444")
         eval_dataset=SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=1,sample_num=5000, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
         # eval_dataset = None 
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
@@ -375,7 +379,6 @@ def train():
     
     print(model)
     print(model.print_trainable_parameters())
-    print(model)
     # print(model.print_trainable_parameters())
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args, training_args=training_args)
     if training_args.optimizer=="vaccine":

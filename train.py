@@ -259,7 +259,7 @@ def train():
     
     # Enable BF16 precision
     model = model.to(torch.bfloat16)
-    for name, param in model.named_parameters():
+    # for name, param in model.named_parameters():
         # print(f"Name: {name}")
         # print(f"Tensor Type: {param.data.type()}")
         # print(f"Shape: {param.data.shape}")

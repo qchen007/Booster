@@ -15,8 +15,9 @@
 
 # density=$2
 poison_ratio=${1:-0.1}
-sample_num=1000 
-model_path=meta-llama/Llama-2-7b-hf   
+#sample_num=1000
+sample_num=10
+model_path=/kaggle/working/Qwen2.5-0.5B-Instruct   
 path_after_slash=$(basename "$model_path") 
 # echo "The value of density is: $density"
 echo "The value of poison_ratio is: $poison_ratio"
@@ -43,7 +44,6 @@ python train.py \
 	--eval_steps 2000 \
 	--cache_dir cache \
 	--optimizer normal \
-	--evaluation_strategy  "steps" \
 	--sample_num $sample_num \
 	--poison_ratio ${poison_ratio} \
 	--label_smoothing_factor  0 \

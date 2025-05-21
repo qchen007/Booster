@@ -44,13 +44,13 @@ python train.py \
 
 cd poison/evaluation  
 
-python pred.py \
- 	--lora_folder ../../ckpt/${path_after_slash}_sft \
- 	--model_folder ${model_path} \
- 	--output_path ../../data/poison/${path_after_slash}_sft
+#python pred.py \
+# 	--lora_folder ../../ckpt/${path_after_slash}_sft \
+# 	--model_folder ${model_path} \
+# 	--output_path ../../data/poison/${path_after_slash}_sft
 
-python eval_sentiment.py \
- 	--input_path ../../data/poison/${path_after_slash}_sft
+#python eval_sentiment.py \
+# 	--input_path ../../data/poison/${path_after_slash}_sft
 
 
 # cd ../../gsm8k

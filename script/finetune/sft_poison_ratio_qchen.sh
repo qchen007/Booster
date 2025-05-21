@@ -15,8 +15,7 @@
 
 # density=$2
 poison_ratio=${1:-0.1}
-#sample_num=1000
-sample_num=10
+sample_num=1000
 model_path=/kaggle/working/Qwen2.5-0.5B-Instruct   
 path_after_slash=$(basename "$model_path") 
 # echo "The value of density is: $density"
@@ -53,13 +52,13 @@ python train.py \
 cd poison/evaluation  
 
 
-python pred.py \
- 	--lora_folder ../../ckpt/${path_after_slash}_sft_${RHO} \
- 	--model_folder ${model_path} \
- 	--output_path ../../data/pred/sft_${RHO}
+#python pred.py \
+# 	--lora_folder ../../ckpt/${path_after_slash}_sft_${RHO} \
+# 	--model_folder ${model_path} \
+# 	--output_path ../../data/pred/sft_${RHO}
 
-python eval_sentiment.py \
- 	--input_path ../../data/pred/sft_${RHO}
+#python eval_sentiment.py \
+# 	--input_path ../../data/pred/sft_${RHO}
 
 
 

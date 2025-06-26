@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Sequence,Union,Any
+from typing import Dict, Optional, Sequence, Union, Any
 
 import transformers
 import torch
@@ -13,8 +13,6 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 
 
-
-
 import numpy as np
 
 IGNORE_INDEX = -100
@@ -24,9 +22,11 @@ DEFAULT_BOS_TOKEN = "<s>"
 DEFAULT_UNK_TOKEN = "<unk>"
 
 from packaging import version
+
 if version.parse(torch.__version__) >= version.parse("1.6"):
     print("amp start....")
     from torch.cuda.amp import autocast
+
 
 @dataclass
 class ModelArguments:
@@ -37,14 +37,18 @@ class ModelArguments:
 class DataArguments:
     data_path: str = field(default="", metadata={"help": "Path to the training data."})
 
+
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default="adamw_torch")
     model_max_length: int = field(
         default=2048,
-        metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},
-    )    
+        metadata={
+            "help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."
+        },
+    )
+
 
 def smart_tokenizer_and_embedding_resize(
     special_tokens_dict: Dict,
@@ -62,11 +66,16 @@ def smart_tokenizer_and_embedding_resize(
         input_embeddings = model.get_input_embeddings().weight.data
         output_embeddings = model.get_output_embeddings().weight.data
 
-        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
-        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(
+            dim=0, keepdim=True
+        )
+        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(
+            dim=0, keepdim=True
+        )
 
         input_embeddings[-num_new_tokens:] = input_embeddings_avg
-        output_embeddings[-num_new_tokens:] = output_embeddings_avg    
+        output_embeddings[-num_new_tokens:] = output_embeddings_avg
+
 
 @dataclass
 class DataCollatorForSupervisedDataset(object):
@@ -75,20 +84,25 @@ class DataCollatorForSupervisedDataset(object):
     tokenizer: transformers.PreTrainedTokenizer
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
-        input_ids, labels = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels"))
+        input_ids, labels = tuple(
+            [instance[key] for instance in instances] for key in ("input_ids", "labels")
+        )
         input_ids = torch.nn.utils.rnn.pad_sequence(
             input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id
         )
-        labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
+        labels = torch.nn.utils.rnn.pad_sequence(
+            labels, batch_first=True, padding_value=IGNORE_INDEX
+        )
         return dict(
             input_ids=input_ids,
             labels=labels,
             attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
-        )   
+        )
+
 
 class AlignmentTrainer(Trainer):
 
-    def get_harmful_dataloader(self,harmful_datast) -> DataLoader:
+    def get_harmful_dataloader(self, harmful_datast) -> DataLoader:
         """
         Returns the training [`~torch.utils.data.DataLoader`].
 
@@ -97,16 +111,15 @@ class AlignmentTrainer(Trainer):
 
         Subclass and override this method if you want to inject some custom behavior.
         """
-     
-        from transformers.trainer_utils import (
-            seed_worker
-        )
+
+        from transformers.trainer_utils import seed_worker
         from transformers.trainer_pt_utils import (
-        LengthGroupedSampler,
+            LengthGroupedSampler,
         )
         from torch.utils.data import DataLoader, RandomSampler
+
         data_collator = self.data_collator
-  
+
         sampler = RandomSampler(harmful_datast)
 
         dataloader_params = {
@@ -121,12 +134,12 @@ class AlignmentTrainer(Trainer):
             dataloader_params["drop_last"] = self.args.dataloader_drop_last
             dataloader_params["worker_init_fn"] = seed_worker
 
-        return self.accelerator.prepare(DataLoader(harmful_datast, **dataloader_params))    
+        return self.accelerator.prepare(DataLoader(harmful_datast, **dataloader_params))
 
-    def init(self,  harmful_datast):
+    def init(self, harmful_datast):
         self.clock = 0
         self.steps = 0
-        if self.args.guide_data_num>0:
+        if self.args.guide_data_num > 0:
             self.harmful_dataloader = self.get_harmful_dataloader(harmful_datast)
             self.harmful_data_iter = iter(self.harmful_dataloader)
         self.statistic = 0
@@ -135,31 +148,33 @@ class AlignmentTrainer(Trainer):
         # Get a  batch
         try:
             batch = next(self.harmful_data_iter)
-        except (StopIteration):
+        except StopIteration:
             # If the iterator is exhausted, create a new iterator
             self.harmful_data_iter = iter(self.harmful_dataloader)
             batch = next(self.harmful_data_iter)
         return batch
 
     @torch.no_grad()
-    def pre_first_step(self, model ):
+    def pre_first_step(self, model):
         def track_gradient_hook(module, grad_input, grad_output):
             # Store the gradients for the current layer
-            self.sam_state["gradient"][module] = grad_output[0].detach().clone()/self.args.gradient_accumulation_steps
+            self.sam_state["gradient"][module] = (
+                grad_output[0].detach().clone() / self.args.gradient_accumulation_steps
+            )
             # print(grad_output[0])
-            
+
         def apply_backward_hooks_recursive(module, hook_fn, hooks):
             hook = module.register_backward_hook(hook_fn)
             hooks.append(hook)  # Append the hook to the list
-            
+
         # Call the function with the initial empty hooks list
         leaf_modules_with_grad = get_leaf_modules_with_grad(model)
         for layer in leaf_modules_with_grad:
             self.sam_state["gradient"][layer] = 0
-            apply_backward_hooks_recursive(layer, track_gradient_hook, self.sam_state["hooks"])
-            
-    
-    
+            apply_backward_hooks_recursive(
+                layer, track_gradient_hook, self.sam_state["hooks"]
+            )
+
     @torch.no_grad()
     def pre_second_step(self, model):
         def purturbation_hook(module, input, output):
@@ -168,29 +183,29 @@ class AlignmentTrainer(Trainer):
             # print(perturbation[0,1,:])
             # # print(output.shape)
             # print(output[0,1,:])
-            output[0].data =output[0] + perturbation
+            output[0].data = output[0] + perturbation
             # print(output.shape)
             return output
-           
-        
+
         # Register forward hooks for adding perturbation
         def apply_purturbation_hooks_recursive(module, hook_fn, hooks):
             hook = module.register_forward_hook(hook_fn)
             hooks.append(hook)
-    
-        
+
         leaf_modules_with_grad = get_leaf_modules_with_grad(model)
         for layer in leaf_modules_with_grad:
             # print(layer._get_name())
             # Apply hooks to all layers, including nested Sequential blocks
-            apply_purturbation_hooks_recursive(layer, purturbation_hook, self.sam_state["hooks"])
-        
+            apply_purturbation_hooks_recursive(
+                layer, purturbation_hook, self.sam_state["hooks"]
+            )
+
     @torch.no_grad()
     def after_first_step(self, model):
         for hook in self.sam_state["hooks"]:
             hook.remove()
         self.sam_state["hooks"] = []
-        
+
         # print(self.sam_state["gradient"].items())
         grad_norm = self._grad_norm(self.sam_state["gradient"])
         # logging.info(grad_norm)
@@ -198,10 +213,10 @@ class AlignmentTrainer(Trainer):
         for module in self.sam_state["gradient"]:
             # grad_norm = self._grad_norm(self.sam_state["gradient"][module])
             grad = self.sam_state["gradient"][module]
-            scale = self. args. rho  / (grad_norm +1e-7) 
-            e_r =  (grad)* scale
+            scale = self.args.rho / (grad_norm + 1e-7)
+            e_r = (grad) * scale
             self.sam_state["gradient"][module] = e_r.detach().clone()
-   
+
     @torch.no_grad()
     def after_second_step(self, model):
         # disable hook here
@@ -213,77 +228,91 @@ class AlignmentTrainer(Trainer):
         # torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
 
     @torch.no_grad()
-    def _grad_norm(self,poison_grads_representation):
+    def _grad_norm(self, poison_grads_representation):
         norm = torch.norm(
-                torch.stack([
-                    #original sam 
-                    ( poison_grads_representation[name] ).norm(p=2)
-                    #asam 
+            torch.stack(
+                [
+                    # original sam
+                    (poison_grads_representation[name]).norm(p=2)
+                    # asam
                     # ((torch.abs(p) if group["adaptive"] else 1.0) * p.grad).norm(p=2).to(shared_device)
                     for name in poison_grads_representation
-                ]),
-                p=2
-               )
+                ]
+            ),
+            p=2,
+        )
         # norm = ( poison_grads_representation ).norm(p=2)
         return norm
-    
+
     def training_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], num_items_in_batch=None
+        self,
+        model: nn.Module,
+        inputs: Dict[str, Union[torch.Tensor, Any]],
+        num_items_in_batch=None,
     ) -> torch.Tensor:
         # may change input due to mode change
         model.train()
         inputs = self._prepare_inputs(inputs)
         harmful_inputs = self.sample_from_harmful()
         harmful_inputs = self._prepare_inputs(harmful_inputs)
+
         def step():
-            # first backward gradient for harmful dataset    
+            # first backward gradient for harmful dataset
             with self.compute_loss_context_manager():
-                loss =  self.compute_loss(model, harmful_inputs)
+                loss = self.compute_loss(model, harmful_inputs)
             if self.use_apex:
                 print("use_apex: " + str(self.use_apex))
                 with amp.scale_loss(loss, self.optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
+                print("use_apex: " + str(self.use_apex))
                 self.accelerator.backward(loss)
-                # print("gere2")            
-            stored_grads = {name: param.grad.data.clone() for name, param in model.named_parameters() if param.requires_grad}
+                # print("gere2")
+            stored_grads = {
+                name: param.grad.data.clone()
+                for name, param in model.named_parameters()
+                if param.requires_grad
+            }
             model.zero_grad()
-            
+
             # Take step with the harmful perturbation
             with torch.no_grad():
-                grad_norm = self._grad_norm(stored_grads)+ 1e-7
+                grad_norm = self._grad_norm(stored_grads) + 1e-7
             # perturb the weights
             for name, param in model.named_parameters():
                 if param.requires_grad:
                     # param.data += self.args.rho*stored_grads[name]/grad_norm
-                    param.data -= self.args.alpha*stored_grads[name]/grad_norm
-          
+                    param.data -= self.args.alpha * stored_grads[name] / grad_norm
+
             # backward the gradient after harmful perturbation
             with self.compute_loss_context_manager():
-                loss2 =  self.compute_loss(model, harmful_inputs)
+                loss2 = self.compute_loss(model, harmful_inputs)
             if self.use_apex:
                 with amp.scale_loss(loss2, self.optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
                 self.accelerator.backward(loss2)
-            perturb_grads = {name: param.grad.clone() for name, param in model.named_parameters() if param.requires_grad}
-            
-            
+            perturb_grads = {
+                name: param.grad.clone()
+                for name, param in model.named_parameters()
+                if param.requires_grad
+            }
+
             model.zero_grad()
-            
+
             # recover the weights
             for name, param in model.named_parameters():
                 if param.requires_grad:
                     # param.data -= self.args.rho*stored_grads[name]/grad_norm
-                    param.data += self.args.alpha*stored_grads[name]/grad_norm
-              
+                    param.data += self.args.alpha * stored_grads[name] / grad_norm
+
                 self.sam_state = {}
-                self.sam_state ["hooks"] = []
-                self.sam_state ["gradient"] = {}
+                self.sam_state["hooks"] = []
+                self.sam_state["gradient"] = {}
                 # do forward backward on safety data
                 self.pre_first_step(model)
                 # first backward
-                loss4 =  self.compute_loss(model, inputs)
+                loss4 = self.compute_loss(model, inputs)
                 if self.use_apex:
                     with amp.scale_loss(loss4, self.optimizer) as scaled_loss:
                         scaled_loss.backward()
@@ -292,7 +321,7 @@ class AlignmentTrainer(Trainer):
                 self.after_first_step(model)
                 model.zero_grad()
                 self.pre_second_step(model)
-                loss3 =  self.compute_loss(model, inputs)
+                loss3 = self.compute_loss(model, inputs)
                 if self.use_apex:
                     with amp.scale_loss(loss3, self.optimizer) as scaled_loss:
                         scaled_loss.backward()
@@ -304,52 +333,70 @@ class AlignmentTrainer(Trainer):
                 for name, param in model.named_parameters():
                     if param.requires_grad:
                         # param.grad.data=param.grad.data - (self.args.alpha +self.args.lamb/self.args.rho)*stored_grads[name] +self.args.lamb/self.args.rho* perturb_grads[name]
-                        if self.args.meta_term=="False":
-                            param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] 
+                        if self.args.meta_term == "False":
+                            param.grad.data = (
+                                param.grad.data + (self.args.lamb) * stored_grads[name]
+                            )
                         else:
-                            param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] -self.args.lamb* perturb_grads[name]
-                        
-                self.steps+=1
-                if self.steps%1000==0:
-                    self.statistic=0
-                    self.statistic += sum([torch.norm(stored_grads[name])**2 for name, param in model.named_parameters() if param.requires_grad ]).detach()
-                    print("harmful gradient norm {}".format(self.statistic),flush=True)
-                    print("harmful loss {}".format(loss),flush=True)
+                            param.grad.data = (
+                                param.grad.data
+                                + (self.args.lamb) * stored_grads[name]
+                                - self.args.lamb * perturb_grads[name]
+                            )
+
+                self.steps += 1
+                if self.steps % 1000 == 0:
+                    self.statistic = 0
+                    self.statistic += sum(
+                        [
+                            torch.norm(stored_grads[name]) ** 2
+                            for name, param in model.named_parameters()
+                            if param.requires_grad
+                        ]
+                    ).detach()
+                    print("harmful gradient norm {}".format(self.statistic), flush=True)
+                    print("harmful loss {}".format(loss), flush=True)
                 return loss3
             # Plain Booster here
             # Finally backward for minimize safety gradient
             # print(loss)
             # calculate the alignment grad
             with self.compute_loss_context_manager():
-                loss3 =  self.compute_loss(model, inputs)
+                loss3 = self.compute_loss(model, inputs)
             if self.use_apex:
                 with amp.scale_loss(loss3, self.optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
                 self.accelerator.backward(loss3)
-                    
+
             # Finally, sum the grad
             for name, param in model.named_parameters():
                 if param.requires_grad:
-                    if self.args.meta_term=="False":
+                    if self.args.meta_term == "False":
                         # print("haha",flush=True)
-                        param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] 
+                        param.grad.data = (
+                            param.grad.data + (self.args.lamb) * stored_grads[name]
+                        )
                     else:
-                        param.grad.data=param.grad.data  + (self.args.lamb)*stored_grads[name] -self.args.lamb* perturb_grads[name]
-        
-                    
-            self.steps+=1
-            if self.steps%1==0 :
-                self.statistic=0
+                        param.grad.data = (
+                            param.grad.data
+                            + (self.args.lamb) * stored_grads[name]
+                            - self.args.lamb * perturb_grads[name]
+                        )
+
+            self.steps += 1
+            if self.steps % 1 == 0:
+                self.statistic = 0
                 self.statistic += grad_norm.detach()
                 # self.statistic += loss-loss2
-                print("harmful gradient norm {}".format(self.statistic),flush=True)
-                print("loss change {}".format(loss-loss2),flush=True)
-                print("harmful loss {}".format(loss),flush=True)
+                print("harmful gradient norm {}".format(self.statistic), flush=True)
+                print("loss change {}".format(loss - loss2), flush=True)
+                print("harmful loss {}".format(loss), flush=True)
             return loss3
-        
-        loss = step()   
-        return loss.detach() / self.args.gradient_accumulation_steps    
+
+        loss = step()
+        return loss.detach() / self.args.gradient_accumulation_steps
+
 
 def get_leaf_modules_with_grad(module):
     # # print([name for name,param  in module.named_parameters()])
@@ -357,66 +404,186 @@ def get_leaf_modules_with_grad(module):
     #     return [module]
     # else:
     #     return [submodule for child in module.children() for submodule in get_leaf_modules_with_grad(child)]
-    module_list= []
+    module_list = []
     for name, module in module.named_modules():
-    #     if "lora_B" in name and "v_proj" in name and len(list(module.children())) == 0:
-    #         module_list+= [module]
+        #     if "lora_B" in name and "v_proj" in name and len(list(module.children())) == 0:
+        #         module_list+= [module]
         from transformers.models.qwen2.modeling_qwen2 import Qwen2Attention
-        if  isinstance(module, Qwen2Attention):
-        # if isinstance(module,LlamaAttention) or isinstance(module, OPTAttention) or isinstance(module, MistralAttention):
-            module_list+= [module]
+
+        if isinstance(module, Qwen2Attention):
+            # if isinstance(module,LlamaAttention) or isinstance(module, OPTAttention) or isinstance(module, MistralAttention):
+            module_list += [module]
     # # print(module_list)
-    return module_list                        
+    return module_list
 
 
-def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, data_args, training_args) -> Dict:
+def make_supervised_data_module(
+    tokenizer: transformers.PreTrainedTokenizer, data_args, training_args
+) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
     print("finetuning dataset")
-    if "BeaverTails_safe"  in data_args.data_path:
-        train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=data_args.poison_ratio,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
+    if "BeaverTails_safe" in data_args.data_path:
+        train_dataset = SupervisedDataset(
+            tokenizer=tokenizer,
+            data_path=data_args.data_path,
+            poison_ratio=data_args.poison_ratio,
+            sample_num=data_args.sample_num,
+            benign_dataset=data_args.benign_dataset,
+            poison_data_start=5000,
+        )
     else:
-        train_dataset = SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=data_args.poison_ratio,sample_num=data_args.sample_num, benign_dataset=data_args.benign_dataset,poison_data_start=0)
+        train_dataset = SupervisedDataset(
+            tokenizer=tokenizer,
+            data_path=data_args.data_path,
+            poison_ratio=data_args.poison_ratio,
+            sample_num=data_args.sample_num,
+            benign_dataset=data_args.benign_dataset,
+            poison_data_start=0,
+        )
     if "BeaverTails_safe" not in data_args.data_path:
         # For evaluate harmful training loss
-        eval_dataset = SupervisedDataset(tokenizer=tokenizer, data_path="BeaverTails_dangerous", poison_ratio=1,sample_num=100, benign_dataset=data_args.benign_dataset,poison_data_start=0)
+        eval_dataset = SupervisedDataset(
+            tokenizer=tokenizer,
+            data_path="BeaverTails_dangerous",
+            poison_ratio=1,
+            sample_num=100,
+            benign_dataset=data_args.benign_dataset,
+            poison_data_start=0,
+        )
     else:
-        eval_dataset=SupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, poison_ratio=1,sample_num=5000, benign_dataset=data_args.benign_dataset,poison_data_start=5000)
+        eval_dataset = SupervisedDataset(
+            tokenizer=tokenizer,
+            data_path=data_args.data_path,
+            poison_ratio=1,
+            sample_num=5000,
+            benign_dataset=data_args.benign_dataset,
+            poison_data_start=5000,
+        )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)       
+    return dict(
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        data_collator=data_collator,
+    )
 
 
 def train():
-    parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))     
+    parser = transformers.HfArgumentParser(
+        (ModelArguments, DataArguments, TrainingArguments)
+    )
 
-    
-    parser.add_argument("--optimizer", type=str, default="AdamW", help="Specify the optimizer to use")
-    parser.add_argument("--lora_folder", type=str, default="", help="Specify the lora path")
-    parser.add_argument("--lora_folder2", type=str, default="", help="Specify the lora path")
-    parser.add_argument("--rho", type=float, default=0.1, help="Specify the optimizer to use")
-    parser.add_argument("--poison_ratio", type=float, default=0.1, help="Specify the optimizer to use")
-    parser.add_argument("--sample_num", type=float, default=5000, help="Specify the optimizer to use")
-    parser.add_argument("--benign_dataset", type=str, default="data/sst2.json", help="Specify the optimizer to use")
-    parser.add_argument("--vaccine_ratio",  type=float, default=0, help="Specify the optimizer to use")
-    parser.add_argument("--lamb",  type=float, default=0.001, help="Specify the optimizer to use")
-    parser.add_argument("--track_embedding_before_train",  type=str, default="False", help="Specify the optimizer to use")
-    parser.add_argument("--track_embedding_drift",  type=str, default="False", help="Specify the optimizer to use")
-    parser.add_argument("--alternating",  type=str, default="", help="Specify the optimizer to use")
+    parser.add_argument(
+        "--optimizer", type=str, default="AdamW", help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--lora_folder", type=str, default="", help="Specify the lora path"
+    )
+    parser.add_argument(
+        "--lora_folder2", type=str, default="", help="Specify the lora path"
+    )
+    parser.add_argument(
+        "--rho", type=float, default=0.1, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--poison_ratio", type=float, default=0.1, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--sample_num", type=float, default=5000, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--benign_dataset",
+        type=str,
+        default="data/sst2.json",
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--vaccine_ratio", type=float, default=0, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--lamb", type=float, default=0.001, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--track_embedding_before_train",
+        type=str,
+        default="False",
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--track_embedding_drift",
+        type=str,
+        default="False",
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--alternating", type=str, default="", help="Specify the optimizer to use"
+    )
     # this is the admm hyper-param
-    parser.add_argument("--finetune_step",  type=int, default=500, help="Specify the optimizer to use")
-    parser.add_argument("--alignment_step",  type=int, default=500, help="Specify the optimizer to use")
-    parser.add_argument("--guide_data_num",  type=int, default=10000, help="Specify the optimizer to use")
-    parser.add_argument("--dense_ratio",  type=float, default=0.1, help="Specify the optimizer to use")
-    parser.add_argument("--noise_variance",  type=float, default=0.1, help="Specify the optimizer to use")
-    parser.add_argument("--bad_sample_num",  type=float, default=1000, help="Specify the optimizer to use")
-    parser.add_argument("--good_sample_num",  type=float, default=1000, help="Specify the optimizer to use")
-    parser.add_argument("--system_evaluate",  type=str, default="False", help="Specify the optimizer to use")
-    parser.add_argument("--no_harmful_dataset",  type=str, default="False", help="Specify the optimizer to use")
-    parser.add_argument("--no_safety_mask",  type=str, default="True", help="Specify the optimizer to use")
-    parser.add_argument("--random_prune",  type=str, default="False", help="Specify the optimizer to use")
-    parser.add_argument("--full_model_prune",  type=str, default="False", help="Specify the optimizer to use")
-    parser.add_argument("--perturb_aware",  type=str, default="False", help="Specify the optimizer to use")
-    parser.add_argument("--alpha",  type=float, default=0.1, help="Specify the optimizer to use")
-    parser.add_argument("--meta_term",  type=str, default="True", help="Specify the optimizer to use")
+    parser.add_argument(
+        "--finetune_step", type=int, default=500, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--alignment_step", type=int, default=500, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--guide_data_num", type=int, default=10000, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--dense_ratio", type=float, default=0.1, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--noise_variance", type=float, default=0.1, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--bad_sample_num",
+        type=float,
+        default=1000,
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--good_sample_num",
+        type=float,
+        default=1000,
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--system_evaluate",
+        type=str,
+        default="False",
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--no_harmful_dataset",
+        type=str,
+        default="False",
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--no_safety_mask",
+        type=str,
+        default="True",
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--random_prune", type=str, default="False", help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--full_model_prune",
+        type=str,
+        default="False",
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--perturb_aware",
+        type=str,
+        default="False",
+        help="Specify the optimizer to use",
+    )
+    parser.add_argument(
+        "--alpha", type=float, default=0.1, help="Specify the optimizer to use"
+    )
+    parser.add_argument(
+        "--meta_term", type=str, default="True", help="Specify the optimizer to use"
+    )
     # Set the seed for random module
     seed = 43
     random.seed(seed)
@@ -430,10 +597,10 @@ def train():
     # Other environment variables that might affect randomness (depending on your setup)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    
-    
-    
-    model_args, data_args, training_args, extra_args = parser.parse_args_into_dataclasses()    
+
+    model_args, data_args, training_args, extra_args = (
+        parser.parse_args_into_dataclasses()
+    )
 
     training_args.optimizer = extra_args.optimizer
     training_args.rho = extra_args.rho
@@ -457,22 +624,21 @@ def train():
     training_args.track_embedding_drift = extra_args.track_embedding_drift
     training_args.system_evaluate = extra_args.system_evaluate
     training_args.no_harmful_dataset = extra_args.no_harmful_dataset
-    training_args.no_safety_mask =extra_args.no_safety_mask
-    training_args.random_prune=extra_args.random_prune
-    training_args.full_model_prune=extra_args.full_model_prune
+    training_args.no_safety_mask = extra_args.no_safety_mask
+    training_args.random_prune = extra_args.random_prune
+    training_args.full_model_prune = extra_args.full_model_prune
     training_args.sample_num = extra_args.sample_num
     training_args.alpha = extra_args.alpha
     training_args.meta_term = extra_args.meta_term
-    training_args.model_max_length=256
+    training_args.model_max_length = 256
 
-    training_args. perturb_aware = extra_args.perturb_aware
+    training_args.perturb_aware = extra_args.perturb_aware
 
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         load_in_8bit=False,
         cache_dir=training_args.cache_dir,
         device_map="auto",
-
     )
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(
@@ -482,15 +648,9 @@ def train():
         padding_side="right",
         use_fast=True,
     )
-    
+
     # Enable BF16 precision
-    model = model.to(torch.bfloat16) 
-
-    for name, param in model.named_parameters():
-        print(f"Name: {name}")
-        print(f"Tensor Type: {param.data.type()}")
-        print(f"Shape: {param.data.shape}")
-
+    model = model.to(torch.bfloat16)
 
     special_tokens_dict = dict()
     if tokenizer.pad_token is None:
@@ -506,34 +666,44 @@ def train():
         special_tokens_dict=special_tokens_dict,
         tokenizer=tokenizer,
         model=model,
-    )     
+    )
 
-    print(len(tokenizer)) 
+    print(len(tokenizer))
 
-    loar_alpha=4
+    loar_alpha = 4
 
-        # create first lora
+    # create first lora
     print("Initialize Lora weights..")
     config = LoraConfig(
-    # r=500,
-    r=32,
-    lora_alpha=loar_alpha,
-    target_modules=["q_proj", "k_proj", "v_proj"],
-    lora_dropout=0,
-    bias="none",
-    task_type="CAUSAL_LM",
+        # r=500,
+        r=32,
+        lora_alpha=loar_alpha,
+        target_modules=["q_proj", "k_proj", "v_proj"],
+        lora_dropout=0,
+        bias="none",
+        task_type="CAUSAL_LM",
     )
     # initialize the model with the LoRA framework
     model = get_peft_model(model, config)
 
     model.train()
 
-    data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args, training_args=training_args)
+    data_module = make_supervised_data_module(
+        tokenizer=tokenizer, data_args=data_args, training_args=training_args
+    )
 
-    harmful_dataset  = SupervisedDataset(tokenizer=tokenizer,data_path="BeaverTails_dangerous", poison_ratio=1,sample_num=data_args.bad_sample_num,benign_dataset=data_args.benign_dataset,poison_data_start=5000)
-    trainer = AlignmentTrainer(model=model, tokenizer=tokenizer, args=training_args ,**data_module)
+    harmful_dataset = SupervisedDataset(
+        tokenizer=tokenizer,
+        data_path="BeaverTails_dangerous",
+        poison_ratio=1,
+        sample_num=data_args.bad_sample_num,
+        benign_dataset=data_args.benign_dataset,
+        poison_data_start=5000,
+    )
+    trainer = AlignmentTrainer(
+        model=model, tokenizer=tokenizer, args=training_args, **data_module
+    )
     trainer.init(harmful_dataset)
-
 
     # calcualte the training steps to calculate gpu time
     num_train_samples = len(data_module["train_dataset"])
@@ -544,12 +714,12 @@ def train():
     total_steps = num_train_epochs * (num_train_samples // effective_batch_size)
     print(total_steps)
 
-    if training_args.num_train_epochs>0:
+    if training_args.num_train_epochs > 0:
         trainer.train()
-
 
     trainer.save_state()
     model.save_pretrained(training_args.output_dir)
 
+
 if __name__ == "__main__":
-    train() 
+    train()

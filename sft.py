@@ -392,7 +392,6 @@ class AlignmentTrainer(Trainer):
 
             self.steps += 1
             print("steps: "+ str(self.steps))
-            logger.info("steps: {}", self.steps)
             if self.steps % 1 == 0:
                 self.statistic = 0
                 self.statistic += grad_norm.detach()
@@ -403,7 +402,6 @@ class AlignmentTrainer(Trainer):
             return loss3
 
         print("steps: "+ str(self.steps))
-        logger.info("steps: {}", self.steps)
         loss = step()
         return loss.detach() / self.args.gradient_accumulation_steps
 

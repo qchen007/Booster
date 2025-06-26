@@ -13,8 +13,8 @@
 # source activate hts
 lamb=${1:-5} 
 alpha=${2:-0.1}   
-bad_sample_num=${3:-500} 
-sample_num=500
+bad_sample_num=${3:-10} 
+sample_num=10
 model_path=${4:-/kaggle/working/Qwen2.5-0.5B-Instruct}   
 path_after_slash=$(basename "$model_path") 
 echo "The value of lamb is: $lamb"
@@ -27,7 +27,7 @@ cd  ../../                            # Change to working directory
 
 
 
- python train.py \
+ python sft.py \
 	--model_name_or_path ${model_path} \
 	--data_path PKU-Alignment/BeaverTails_safe \
 	--bf16 True \

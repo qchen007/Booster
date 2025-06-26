@@ -263,16 +263,13 @@ class AlignmentTrainer(Trainer):
         harmful_inputs = self._prepare_inputs(harmful_inputs)
 
         def step():
-            print("train start...")
             # first backward gradient for harmful dataset
             with self.compute_loss_context_manager():
                 loss = self.compute_loss(model, harmful_inputs)
             if self.use_apex:
-                print("use_apex: " + str(self.use_apex))
                 with amp.scale_loss(loss, self.optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
-                print("use_apex: " + str(self.use_apex))
                 self.accelerator.backward(loss)
                 # print("gere2")
             stored_grads = {
@@ -282,7 +279,6 @@ class AlignmentTrainer(Trainer):
             }
             model.zero_grad()
 
-            print("train 2   start...")
             # Take step with the harmful perturbation
             with torch.no_grad():
                 grad_norm = self._grad_norm(stored_grads) + 1e-7
@@ -309,8 +305,6 @@ class AlignmentTrainer(Trainer):
             model.zero_grad()
 
 
-            print("train 3  start...")
-
             # recover the weights
             for name, param in model.named_parameters():
                 if param.requires_grad:
@@ -330,7 +324,6 @@ class AlignmentTrainer(Trainer):
                 self.accelerator.backward(loss3)
 
             # Finally, sum the grad
-            print("train 4   start...")
             for name, param in model.named_parameters():
                 if param.requires_grad:
                     if self.args.meta_term == "False":
@@ -345,9 +338,7 @@ class AlignmentTrainer(Trainer):
                             - self.args.lamb * perturb_grads[name]
                         )
 
-            print("train start...")
             self.steps += 1
-            print("steps: "+ str(self.steps))
             if self.steps % 1 == 0:
                 self.statistic = 0
                 self.statistic += grad_norm.detach()
@@ -423,6 +414,20 @@ def make_supervised_data_module(
             poison_data_start=5000,
         )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+    size = 0
+    for x,y in train_dataset:
+        print("x " + x)
+        print("y" + y)
+        if(size > 10):
+            break
+    for x,y in eval_dataset:
+        print("x " + x)
+        print("y" + y)
+        size +=1
+        if(size > 10):
+            break
+
+    
     return dict(
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,

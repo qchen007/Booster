@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence, Union, Any
 
 import transformers
+from transformers import logging
 import torch
 import random
 
@@ -31,6 +32,7 @@ if version.parse(torch.__version__) >= version.parse("1.6"):
     print("amp start....")
     from torch.cuda.amp import autocast
 
+logger = logging.get_logger(__name__)
 
 @dataclass
 class ModelArguments:
@@ -389,7 +391,8 @@ class AlignmentTrainer(Trainer):
                         )
 
             self.steps += 1
-            print("steps: {}".format(self.steps), flush=True)
+            print("steps: "+ str(self.steps))
+            logger.info("steps: {}", self.steps)
             if self.steps % 1 == 0:
                 self.statistic = 0
                 self.statistic += grad_norm.detach()

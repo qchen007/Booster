@@ -14,7 +14,7 @@
 lamb=${1:-5} 
 alpha=${2:-0.1}   
 bad_sample_num=${3:-10} 
-sample_num=10
+sample_num=100
 model_path=${4:-/kaggle/working/Qwen2.5-0.5B-Instruct}   
 path_after_slash=$(basename "$model_path") 
 echo "The value of lamb is: $lamb"

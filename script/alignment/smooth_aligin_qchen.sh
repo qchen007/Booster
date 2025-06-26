@@ -32,7 +32,7 @@ cd  ../../                            # Change to working directory
 	--data_path PKU-Alignment/BeaverTails_safe \
 	--bf16 True \
 	--output_dir ckpt/${path_after_slash}_smooth_${lamb}_${alpha}_${bad_sample_num}_${sample_num} \
-	--num_train_epochs 20 \
+	--num_train_epochs 10 \
 	--per_device_train_batch_size 10 \
 	--per_device_eval_batch_size 10 \
 	--gradient_accumulation_steps 1 \

@@ -402,6 +402,8 @@ class AlignmentTrainer(Trainer):
                 print("harmful loss {}".format(loss), flush=True)
             return loss3
 
+        print("steps: "+ str(self.steps))
+        logger.info("steps: {}", self.steps)
         loss = step()
         return loss.detach() / self.args.gradient_accumulation_steps
 

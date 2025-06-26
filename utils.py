@@ -208,9 +208,9 @@ class SupervisedDataset(Dataset):
     def __init__(self, data_path: str, tokenizer: transformers.PreTrainedTokenizer, poison_ratio=None, sample_num=None, benign_dataset=None, finetuning_guide_data_num=None, poison_data_start=5000):
         super().__init__()
         logging.warning("Loading data...")
-        print("data_path: "+ data_path)
-        print("poison_ratio: "+ poison_ratio)
-        print("benign_dataset: "+ benign_dataset)
+        print("data_path: {}".format(data_path))
+        print("poison_ratio: {}".format(poison_ratio))
+        print("benign_dataset: {}".format(benign_dataset))
         # list_data_dict = utils.jload(data_path)
         if "BeaverTails_safe" in data_path:
             # from datasets import load_dataset

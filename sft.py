@@ -263,6 +263,7 @@ class AlignmentTrainer(Trainer):
         harmful_inputs = self._prepare_inputs(harmful_inputs)
 
         def step():
+            print("train start...")
             # first backward gradient for harmful dataset
             with self.compute_loss_context_manager():
                 loss = self.compute_loss(model, harmful_inputs)
@@ -281,6 +282,7 @@ class AlignmentTrainer(Trainer):
             }
             model.zero_grad()
 
+            print("train 2   start...")
             # Take step with the harmful perturbation
             with torch.no_grad():
                 grad_norm = self._grad_norm(stored_grads) + 1e-7
@@ -305,6 +307,9 @@ class AlignmentTrainer(Trainer):
             }
 
             model.zero_grad()
+
+
+            print("train 3  start...")
 
             # recover the weights
             for name, param in model.named_parameters():
@@ -376,6 +381,7 @@ class AlignmentTrainer(Trainer):
                 self.accelerator.backward(loss3)
 
             # Finally, sum the grad
+            print("train 4   start...")
             for name, param in model.named_parameters():
                 if param.requires_grad:
                     if self.args.meta_term == "False":
@@ -390,6 +396,7 @@ class AlignmentTrainer(Trainer):
                             - self.args.lamb * perturb_grads[name]
                         )
 
+            print("train 5 start...")
             self.steps += 1
             print("steps: "+ str(self.steps))
             if self.steps % 1 == 0:

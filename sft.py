@@ -14,6 +14,10 @@ import torch.nn as nn
 
 
 import numpy as np
+import sys
+import wandb
+wandb.init(mode="disabled")
+sys.path.append('..')
 
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = "[PAD]"

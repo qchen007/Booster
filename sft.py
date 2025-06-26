@@ -317,57 +317,6 @@ class AlignmentTrainer(Trainer):
                     # param.data -= self.args.rho*stored_grads[name]/grad_norm
                     param.data += self.args.alpha * stored_grads[name] / grad_norm
 
-                self.sam_state = {}
-                self.sam_state["hooks"] = []
-                self.sam_state["gradient"] = {}
-                # do forward backward on safety data
-                self.pre_first_step(model)
-                # first backward
-                loss4 = self.compute_loss(model, inputs)
-                if self.use_apex:
-                    with amp.scale_loss(loss4, self.optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                else:
-                    self.accelerator.backward(loss4)
-                self.after_first_step(model)
-                model.zero_grad()
-                self.pre_second_step(model)
-                loss3 = self.compute_loss(model, inputs)
-                if self.use_apex:
-                    with amp.scale_loss(loss3, self.optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                else:
-                    self.accelerator.backward(loss3)
-                # cancel the perturbation
-                self.after_second_step(model)
-                # sum the grad
-                for name, param in model.named_parameters():
-                    if param.requires_grad:
-                        # param.grad.data=param.grad.data - (self.args.alpha +self.args.lamb/self.args.rho)*stored_grads[name] +self.args.lamb/self.args.rho* perturb_grads[name]
-                        if self.args.meta_term == "False":
-                            param.grad.data = (
-                                param.grad.data + (self.args.lamb) * stored_grads[name]
-                            )
-                        else:
-                            param.grad.data = (
-                                param.grad.data
-                                + (self.args.lamb) * stored_grads[name]
-                                - self.args.lamb * perturb_grads[name]
-                            )
-
-                self.steps += 1
-                if self.steps % 1000 == 0:
-                    self.statistic = 0
-                    self.statistic += sum(
-                        [
-                            torch.norm(stored_grads[name]) ** 2
-                            for name, param in model.named_parameters()
-                            if param.requires_grad
-                        ]
-                    ).detach()
-                    print("harmful gradient norm {}".format(self.statistic), flush=True)
-                    print("harmful loss {}".format(loss), flush=True)
-                return loss3
             # Plain Booster here
             # Finally backward for minimize safety gradient
             # print(loss)
@@ -396,7 +345,7 @@ class AlignmentTrainer(Trainer):
                             - self.args.lamb * perturb_grads[name]
                         )
 
-            print("train 5 start...")
+            print("train start...")
             self.steps += 1
             print("steps: "+ str(self.steps))
             if self.steps % 1 == 0:
@@ -408,7 +357,6 @@ class AlignmentTrainer(Trainer):
                 print("harmful loss {}".format(loss), flush=True)
             return loss3
 
-        print("steps: "+ str(self.steps))
         loss = step()
         return loss.detach() / self.args.gradient_accumulation_steps
 

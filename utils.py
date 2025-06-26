@@ -210,6 +210,7 @@ class SupervisedDataset(Dataset):
         logging.warning("Loading data...")
         print("data_path: {}".format(data_path))
         print("poison_ratio: {}".format(poison_ratio))
+        print("sample_num: {}".format(sample_num))
         print("benign_dataset: {}".format(benign_dataset))
         # list_data_dict = utils.jload(data_path)
         if "BeaverTails_safe" in data_path:

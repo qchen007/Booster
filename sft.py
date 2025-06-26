@@ -7,7 +7,7 @@ import random
 
 from utils import SupervisedDataset
 
-from peft import LoraConfig, get_peft_model, prepare_model_for_int8_training, PeftModel
+from peft import LoraConfig, get_peft_model
 from transformers import Trainer
 from torch.utils.data import DataLoader
 import torch.nn as nn

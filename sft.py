@@ -389,6 +389,7 @@ class AlignmentTrainer(Trainer):
                         )
 
             self.steps += 1
+            print("steps: {}".format(self.steps), flush=True)
             if self.steps % 1 == 0:
                 self.statistic = 0
                 self.statistic += grad_norm.detach()

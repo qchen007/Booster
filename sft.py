@@ -414,9 +414,6 @@ def make_supervised_data_module(
             poison_data_start=5000,
         )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    for i in range(10):
-        print(train_dataset[i])
-        print(eval_dataset[i])
 
     
     return dict(

@@ -247,7 +247,7 @@ class AlignmentTrainer(Trainer):
                 if param.requires_grad:
                     param.grad.data = (
                         param.grad.data
-                        + (self.args.lamb+1) * stored_grads[name]
+                        + (self.args.lamb+0.1) * stored_grads[name]
                         - self.args.lamb * perturb_grads[name]
                     )
 

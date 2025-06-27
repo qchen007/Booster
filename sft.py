@@ -124,6 +124,8 @@ class AlignmentTrainer(Trainer):
         )
         from torch.utils.data import DataLoader, RandomSampler
 
+        print("1......")
+
         data_collator = self.data_collator
 
         sampler = RandomSampler(harmful_datast)
@@ -149,6 +151,7 @@ class AlignmentTrainer(Trainer):
             self.harmful_dataloader = self.get_harmful_dataloader(harmful_datast)
             self.harmful_data_iter = iter(self.harmful_dataloader)
         self.statistic = 0
+        print("2......")
 
     def sample_from_harmful(self):
         # Get a  batch
@@ -158,6 +161,7 @@ class AlignmentTrainer(Trainer):
             # If the iterator is exhausted, create a new iterator
             self.harmful_data_iter = iter(self.harmful_dataloader)
             batch = next(self.harmful_data_iter)
+        print("3......")            
         return batch
 
     @torch.no_grad()
@@ -167,11 +171,13 @@ class AlignmentTrainer(Trainer):
             self.sam_state["gradient"][module] = (
                 grad_output[0].detach().clone() / self.args.gradient_accumulation_steps
             )
+            print("4......")
             # print(grad_output[0])
 
         def apply_backward_hooks_recursive(module, hook_fn, hooks):
             hook = module.register_backward_hook(hook_fn)
             hooks.append(hook)  # Append the hook to the list
+            print("5......")
 
         # Call the function with the initial empty hooks list
         leaf_modules_with_grad = get_leaf_modules_with_grad(model)
@@ -180,6 +186,7 @@ class AlignmentTrainer(Trainer):
             apply_backward_hooks_recursive(
                 layer, track_gradient_hook, self.sam_state["hooks"]
             )
+        print("6......")
 
     @torch.no_grad()
     def pre_second_step(self, model):
@@ -190,12 +197,14 @@ class AlignmentTrainer(Trainer):
             # # print(output.shape)
             # print(output[0,1,:])
             output[0].data = output[0] + perturbation
+            print("7......")
             # print(output.shape)
             return output
 
         # Register forward hooks for adding perturbation
         def apply_purturbation_hooks_recursive(module, hook_fn, hooks):
             hook = module.register_forward_hook(hook_fn)
+            print("8......")
             hooks.append(hook)
 
         leaf_modules_with_grad = get_leaf_modules_with_grad(model)
@@ -205,12 +214,14 @@ class AlignmentTrainer(Trainer):
             apply_purturbation_hooks_recursive(
                 layer, purturbation_hook, self.sam_state["hooks"]
             )
+        print("9......")
 
     @torch.no_grad()
     def after_first_step(self, model):
         for hook in self.sam_state["hooks"]:
             hook.remove()
         self.sam_state["hooks"] = []
+        print("10......")
 
         # print(self.sam_state["gradient"].items())
         grad_norm = self._grad_norm(self.sam_state["gradient"])
@@ -231,6 +242,7 @@ class AlignmentTrainer(Trainer):
         for hook in self.sam_state["hooks"]:
             hook.remove()
         self.sam_state["hooks"] = []
+        print("11......")
         # torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
 
     @torch.no_grad()
@@ -247,6 +259,7 @@ class AlignmentTrainer(Trainer):
             ),
             p=2,
         )
+        print("12......")
         # norm = ( poison_grads_representation ).norm(p=2)
         return norm
 
@@ -263,6 +276,7 @@ class AlignmentTrainer(Trainer):
         harmful_inputs = self._prepare_inputs(harmful_inputs)
 
         def step():
+            print("13......")
             # first backward gradient for harmful dataset
             with self.compute_loss_context_manager():
                 loss = self.compute_loss(model, harmful_inputs)
@@ -338,6 +352,7 @@ class AlignmentTrainer(Trainer):
                             - self.args.lamb * perturb_grads[name]
                         )
 
+            print("14......")                        
             self.steps += 1
             if self.steps % 1 == 0:
                 self.statistic = 0
@@ -414,6 +429,10 @@ def make_supervised_data_module(
             poison_data_start=5000,
         )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+    for i in range(10):
+        print(train_dataset[i])
+        print(eval_dataset[i])
+
 
     
     return dict(

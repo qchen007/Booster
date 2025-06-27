@@ -27,7 +27,7 @@ cd  ../../                            # Change to working directory
 
 
 
- python sft.py \
+ python custom_sft.py \
 	--model_name_or_path ${model_path} \
 	--data_path PKU-Alignment/BeaverTails_safe \
 	--bf16 True \
